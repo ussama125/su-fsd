@@ -135,10 +135,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-black p-8">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <Select value={sortBy} onValueChange={sortItems}>
-          <SelectTrigger className="w-[200px] bg-transparent text-white border-white/20">
+          <SelectTrigger className="w-[200px] bg-card text-card-foreground border-border">
             <SelectValue placeholder="Sort by created at" />
           </SelectTrigger>
           <SelectContent>
@@ -150,9 +150,9 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {items.map((item) => (
-            <Card key={item.filename} className="p-4 bg-transparent text-white border-white/20">
+            <Card key={item.filename} className="p-4 bg-card text-card-foreground border-border">
               <div className="space-y-1">
-                <div className="text-sm text-gray-400">{new Date(item.createdAt).toLocaleString()}</div>
+                <div className="text-sm text-muted-foreground">{new Date(item.createdAt).toLocaleString()}</div>
                 <div className="text-lg">{item.filename}</div>
               </div>
             </Card>
