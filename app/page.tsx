@@ -1,101 +1,165 @@
-import Image from "next/image";
+"use client"
+
+import { useEffect, useState } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card } from "@/components/ui/card"
+
+interface Item {
+  filename: string
+  createdAt: string
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [items, setItems] = useState<Item[]>([])
+  const [sortBy, setSortBy] = useState("created-asc")
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    fetchItems()
+  }, [])
+
+  const fetchItems = async () => {
+    try {
+      const response = await fetch("/api/items")
+      if (!response.ok) {
+        throw new Error("Failed to fetch items")
+      }
+      const data = await response.json()
+      setItems(data)
+    } catch (error) {
+      console.error("Error fetching items:", error)
+      // You might want to set an error state here and display it to the user
+    }
+  }
+
+  const sortItems = (type: string) => {
+    setSortBy(type)
+    const sortedItems = [...items]
+
+    switch (type) {
+      case "created-asc":
+        sortedItems.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        break
+      case "created-desc":
+        sortedItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        break
+      case "filename-asc":
+      case "filename-desc":
+        sortedItems.sort((a, b) => {
+          const aFilename = a.filename;
+          const bFilename = b.filename;
+
+          // Determine if filenames start with letters
+          const aStartsWithLetter = /^[a-zA-Z]/.test(aFilename);
+          const bStartsWithLetter = /^[a-zA-Z]/.test(bFilename);
+
+          // If one starts with a letter and one doesn't
+          if (aStartsWithLetter !== bStartsWithLetter) {
+            // Files starting with non-letters come first in ascending order
+            return aStartsWithLetter ?
+              (type === "filename-asc" ? 1 : -1) :
+              (type === "filename-asc" ? -1 : 1);
+          }
+
+          // If both start with letters
+          if (aStartsWithLetter) {
+            // Extract the letter prefix and any following numbers
+            const aLetterPrefix = aFilename.match(/^[a-zA-Z]+/)?.[0] || "";
+            const bLetterPrefix = bFilename.match(/^[a-zA-Z]+/)?.[0] || "";
+
+            // Compare the letter prefixes
+            const prefixCompare = aLetterPrefix.localeCompare(bLetterPrefix);
+            if (prefixCompare !== 0) {
+              return type === "filename-asc" ? prefixCompare : -prefixCompare;
+            }
+
+            // If letter prefixes are the same, check for following numbers
+            const aNumMatch = aFilename.substring(aLetterPrefix.length).match(/^(\d+)/);
+            const bNumMatch = bFilename.substring(bLetterPrefix.length).match(/^(\d+)/);
+
+            // If one has a number and one doesn't, the one without comes first
+            if (!aNumMatch && bNumMatch) {
+              return type === "filename-asc" ? -1 : 1;
+            }
+            if (aNumMatch && !bNumMatch) {
+              return type === "filename-asc" ? 1 : -1;
+            }
+
+            // If both have numbers, compare them numerically
+            if (aNumMatch && bNumMatch) {
+              const aNum = parseInt(aNumMatch[1], 10);
+              const bNum = parseInt(bNumMatch[1], 10);
+
+              if (aNum !== bNum) {
+                return type === "filename-asc" ? aNum - bNum : bNum - aNum;
+              }
+            }
+          }
+          // For files starting with digits
+          else {
+            const aNumMatch = aFilename.match(/^(\d+)/);
+            const bNumMatch = bFilename.match(/^(\d+)/);
+
+            // If both have leading numbers
+            if (aNumMatch && bNumMatch) {
+              // Compare the integer values first
+              const aNum = parseInt(aNumMatch[1], 10);
+              const bNum = parseInt(bNumMatch[1], 10);
+
+              if (aNum !== bNum) {
+                // Sort by numeric value
+                return type === "filename-asc" ? aNum - bNum : bNum - aNum;
+              }
+              else {
+                // If the integer values are the same, more leading zeros come first
+                const aLeadingZeros = aNumMatch[1].match(/^0+/)?.[0]?.length || 0;
+                const bLeadingZeros = bNumMatch[1].match(/^0+/)?.[0]?.length || 0;
+
+                if (aLeadingZeros !== bLeadingZeros) {
+                  return type === "filename-asc" ?
+                    bLeadingZeros - aLeadingZeros :
+                    aLeadingZeros - bLeadingZeros;
+                }
+              }
+            }
+          }
+
+          // Default to standard string comparison
+          return type === "filename-asc" ?
+            aFilename.localeCompare(bFilename) :
+            bFilename.localeCompare(aFilename);
+        })
+        break
+    }
+
+    setItems(sortedItems)
+  }
+
+  return (
+    <div className="min-h-screen bg-black p-8">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Select value={sortBy} onValueChange={sortItems}>
+          <SelectTrigger className="w-[200px] bg-transparent text-white border-white/20">
+            <SelectValue placeholder="Sort by created at" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="created-asc">Sort by created at</SelectItem>
+            <SelectItem value="filename-asc">Sort by filename ascending</SelectItem>
+            <SelectItem value="filename-desc">Sort by filename descending</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {items.map((item) => (
+            <Card key={item.filename} className="p-4 bg-transparent text-white border-white/20">
+              <div className="space-y-1">
+                <div className="text-sm text-gray-400">{new Date(item.createdAt).toLocaleString()}</div>
+                <div className="text-lg">{item.filename}</div>
+              </div>
+            </Card>
+          ))}
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </div>
     </div>
-  );
+  )
 }
+
